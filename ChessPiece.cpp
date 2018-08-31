@@ -74,15 +74,14 @@ ChessPiece::removeMovesLeadingToSelfCheck(vector<Square *> destinations) {
   safeDestinations.reserve(50);
 
   for (Square *destination : destinations) {
-    Move *moveToTry = new Move(board, location, destination, true);
-    board->doMove(moveToTry);
+    Move moveToTry = Move(board, location, destination, true);
+    board->doMove(&moveToTry);
 
     if (!board->isInCheck(color) && !board->tooMuchRepetition()) {
       safeDestinations.push_back(destination);
     }
 
     board->undoMove();
-    delete moveToTry;
   }
   return safeDestinations;
 }
