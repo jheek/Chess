@@ -21,6 +21,7 @@ class Move {
   ChessPiece *initialPiece = nullptr;
   ChessPiece *takenPiece = nullptr;
   Player *player;
+  int scoreAtEnd;
   bool simulated = false;
   void identifyPieces();
 
@@ -70,6 +71,8 @@ class Move {
   void setPromoting(bool promoting);
   ChessPiece *getEnPassantTakenPiece() const;
   void setEnPassantTakenPiece(ChessPiece *enPassantTakenPiece);
+  int getScoreAtEnd() const;
+  void setScoreAtEnd(int score);
 };
 
 #endif //CHESS_MOVE_H

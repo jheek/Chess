@@ -122,3 +122,11 @@ ChessPiece *Move::getEnPassantTakenPiece() const {
 void Move::setEnPassantTakenPiece(ChessPiece *enPassantTakenPiece) {
   Move::enPassantTakenPiece = enPassantTakenPiece;
 }
+
+int Move::getScoreAtEnd() const {
+  return scoreAtEnd;
+}
+
+void Move::setScoreAtEnd(int scoreAtEnd) {
+  Move::scoreAtEnd = scoreAtEnd;
+}

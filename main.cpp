@@ -16,7 +16,9 @@
 #include "Interface.h"
 #include "players/HumanPlayer.h"
 #include "players/MinMaxPlayer.h"
+#include "players/JMinMaxPlayer.h"
 #include "players/RandomPlayer.h"
+#include <iostream>
 
 using namespace sf;
 
@@ -28,8 +30,13 @@ int main() {
 
   Board board = Board();
   Interface interface(&board, window);
-  Player *bottomPlayer = new MinMaxPlayer(PieceColor::WHITE, 4);
-  Player *topPlayer = new MinMaxPlayer(PieceColor::BLACK, 4);
+  // Player *bottomPlayer = new HumanPlayer(PieceColor::WHITE);
+  Player *bottomPlayer = new JMinMaxPlayer(PieceColor::WHITE, 50 * 1000);
+  // Player *bottomPlayer = new MinMaxPlayer(PieceColor::WHITE, 3);
+
+  // Player *topPlayer = new MinMaxPlayer(PieceColor::BLACK, 3);
+  Player *topPlayer = new JMinMaxPlayer(PieceColor::BLACK, 50 * 1000);
+  // Player *topPlayer = new HumanPlayer(PieceColor::BLACK);
 
   // white begins
   Player *currentPlayer = bottomPlayer->getColor()==PieceColor::WHITE ? bottomPlayer : topPlayer;
