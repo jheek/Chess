@@ -34,11 +34,10 @@ int main() {
   // white begins
   Player *currentPlayer = bottomPlayer->getColor()==PieceColor::WHITE ? bottomPlayer : topPlayer;
   board.startGame(bottomPlayer, topPlayer, currentPlayer);
-
+  Event event;
   while (window.isOpen()) {
-
-    Event event;
-    while (window.pollEvent(event)) {
+    if (currentPlayer->isHuman) {
+      window.waitEvent(event);
 
       // Handle Events
       if (event.type==Event::Closed) {
@@ -56,8 +55,15 @@ int main() {
       }
       interface.draw();
       window.display();
+    } else {
+      while (window.pollEvent(event)) {
+        if (event.type==Event::Closed) {
+          window.close();
+        }
+        interface.draw();
+        window.display();
+      }
     }
-
     Move *nextMove = currentPlayer->getNextMove(&board);
     if (nextMove) {
       board.doMove(nextMove);
