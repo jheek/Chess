@@ -1,86 +1,59 @@
 //
-// Created by Lukas Bos on 13/12/2017.
+// Created by Lukas Bos on 31/08/2018.
 //
 
-#include <iostream>
-#include "MinMaxPlayer.h"
+#include "MonteCarloPlayer.h"
 
-using namespace sf;
-using namespace std;
-
-MinMaxPlayer::MinMaxPlayer(PieceColor color, int depth)
-    : Player(color), depth(depth) {
-  type = "MinMaxPlayer - " + to_string(depth);
+MonteCarloPlayer::MonteCarloPlayer(PieceColor color) : Player(color) {
+  type = "MonteCarloPlayer";
   isHuman = false;
 }
 
-Move *MinMaxPlayer::getNextMove(Board *board) {
-  long highestScore = INT_MIN;
-  Move *bestMove = nullptr;
+Move *MonteCarloPlayer::getNextMove(Board *board) {
+  double bestMoveScore = INT_MIN;
+  for (ChessPiece *piece : board->getPiecesByColor(color)) {
+    for (Move *move : piece->getAvailableMoves(true)) {
+      // for every move we do a random playout
 
-  vector<ChessPiece *> pieces = board->getPiecesByColor(color);
-  for (ChessPiece *piece : pieces) {
-    vector<Move *> moves = piece->getAvailableMoves(true);
-    for (Move *move : moves) {
-      long newScore = getMoveScore(board, move, 0, INT_MIN, INT_MAX);
-      if (newScore > highestScore) {
-        highestScore = newScore;
-        bestMove = move;
+      long scoreSum = 0;
+      int numOfGamesPerMove = 100;
+      move->setSimulated(true);
+      board->doMove(move);
+      for (int i = 0; i < numOfGamesPerMove; i++) {
+        scoreSum += playout(board, color, 0);
       }
+      double score = scoreSum/numOfGamesPerMove;
+      if (score > bestMoveScore) {
+        bestMoveScore = score;
+        nextMove = move;
+      }
+      board->undoMove();
     }
   }
-  bestMove->setSimulated(false);
-  cout << "advantage for white: " << getBoardScore(board, PieceColor::WHITE) << endl;
 
-  return bestMove;
+  nextMove->setSimulated(false);
+  return nextMove;
 }
 
-int MinMaxPlayer::getMoveScore(Board *board, Move *move, int exit, int alpha, int beta) {
-  PieceColor colorToMove = move->getInitialPiece()->getColor();
+int MonteCarloPlayer::playout(Board *board, PieceColor colorToMove, int counter) {
+  std::vector<ChessPiece *> pieces = board->getPiecesByColor(colorToMove);
 
-  if (exit >= depth) {
-    move->setSimulated(true);
-    board->doMove(move);
-    long boardScore = getBoardScore(board, colorToMove);
+  ChessPiece *randomPiece = pieces[rand()%pieces.size()];
+  std::vector<Move *> moves = randomPiece->getAvailableMoves(true);
+  if (!moves.empty() && counter < 1000) { // if the chesspiece has available moves
+    Move *moveToTry = moves.at(rand()%moves.size());
+    moveToTry->setSimulated(true);
+    board->doMove(moveToTry);
+    playout(board, inverse(colorToMove), counter + 1);
     board->undoMove();
-    return boardScore;
+  } else {
+
+    // return a value of how favorable the score is for the initial player
+    return getBoardScore(board, color);
   }
-
-  int bestScore, newScore;
-  bool isMaximizing = colorToMove!=color;
-  bestScore = isMaximizing ? INT_MIN : INT_MAX;
-
-  move->setSimulated(true);
-  board->doMove(move);
-
-  vector<ChessPiece *> pieces = board->getPiecesByColor(inverse(colorToMove));
-  for (ChessPiece *piece : pieces) {
-    vector<Move *> moves = piece->getAvailableMoves(true);
-    for (Move *move : moves) {
-
-      int newExit = exit;
-      if (!board->isInCheck(PieceColor::WHITE) || !board->isInCheck(PieceColor::BLACK)) {
-        newExit++;
-      }
-      newScore = -getMoveScore(board, move, newExit, alpha, beta);
-
-      if (isMaximizing) {
-        bestScore = max(newScore, bestScore);
-        beta = max(bestScore, beta);
-      } else {
-        bestScore = min(newScore, bestScore);
-        alpha = min(bestScore, alpha);
-      }
-      if (beta < alpha) break;
-    }
-    if (beta < alpha) break;
-  }
-  board->undoMove();
-
-  return bestScore;
 }
 
-int MinMaxPlayer::getBoardScore(Board *board, PieceColor c) {
+int MonteCarloPlayer::getBoardScore(Board *board, PieceColor c) {
   vector<ChessPiece *> friendlyPieces = board->getPiecesByColor(c);
   vector<ChessPiece *> opponentPieces = board->getPiecesByColor(inverse(c));
 
@@ -88,7 +61,7 @@ int MinMaxPlayer::getBoardScore(Board *board, PieceColor c) {
   return score;
 }
 
-int MinMaxPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
+int MonteCarloPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
   int materialScore = 0;
   int locationScore = 0;
   int movementScore = 0;
@@ -112,7 +85,7 @@ int MinMaxPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
   return total;
 }
 
-int MinMaxPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i location) {
+int MonteCarloPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i location) {
   // source: https://chessprogramming.wikispaces.com/Simplified+evaluation+function
 
   PieceType type = piece->getType();
@@ -204,7 +177,7 @@ int MinMaxPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i loc
 
   return locationScores[y][x];
 }
-int MinMaxPlayer::getPieceScore(ChessPiece *piece) {
+int MonteCarloPlayer::getPieceScore(ChessPiece *piece) {
   switch (piece->getType()) {
     case KING: return 10000;
     case QUEEN: return 900;

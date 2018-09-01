@@ -18,7 +18,8 @@
 #include "players/MinMaxPlayer.h"
 #include "players/JMinMaxPlayer.h"
 #include "players/RandomPlayer.h"
-#include <iostream>
+#include "players/MonteCarloPlayer.h"
+#include "players/HybridPlayer.h"
 
 using namespace sf;
 

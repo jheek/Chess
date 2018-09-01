@@ -3,39 +3,76 @@
 //
 
 #include <iostream>
-#include "MinMaxPlayer.h"
+#include "HybridPlayer.h"
 
 using namespace sf;
 using namespace std;
 
-MinMaxPlayer::MinMaxPlayer(PieceColor color, int depth)
+HybridPlayer::HybridPlayer(PieceColor color, int depth)
     : Player(color), depth(depth) {
   type = "MinMaxPlayer - " + to_string(depth);
   isHuman = false;
 }
 
-Move *MinMaxPlayer::getNextMove(Board *board) {
-  long highestScore = INT_MIN;
-  Move *bestMove = nullptr;
+Move *HybridPlayer::getNextMove(Board *board) {
+  vector<tuple<int, Move *>> scores;
 
   vector<ChessPiece *> pieces = board->getPiecesByColor(color);
   for (ChessPiece *piece : pieces) {
     vector<Move *> moves = piece->getAvailableMoves(true);
     for (Move *move : moves) {
       long newScore = getMoveScore(board, move, 0, INT_MIN, INT_MAX);
-      if (newScore > highestScore) {
-        highestScore = newScore;
-        bestMove = move;
-      }
+      scores.push_back({newScore, move});
+
+      // Yes... this is legal: https://www.geeksforgeeks.org/sorting-vector-tuple-c-ascending-order/
+      sort(scores.begin(), scores.end()); // sort scores
     }
   }
-  bestMove->setSimulated(false);
-  cout << "advantage for white: " << getBoardScore(board, PieceColor::WHITE) << endl;
+  int bestMoveScore = INT_MIN;
 
-  return bestMove;
+  // take the best three moves;
+  for (int i = scores.size() - 1; i > scores.size() - 4; i--) {
+    auto move = std::get<1>(scores.at(i));
+
+    long scoreSum = 0;
+    int numOfGamesPerMove = 100;
+    move->setSimulated(true);
+
+    board->doMove(move);
+    for (int i = 0; i < numOfGamesPerMove; i++) {
+      scoreSum += playout(board, color, 0);
+    }
+    double score = scoreSum/numOfGamesPerMove;
+    if (score > bestMoveScore) {
+      bestMoveScore = score;
+      nextMove = move;
+    }
+    board->undoMove();
+  }
+
+  cout << "advantage for white: " << getBoardScore(board, PieceColor::WHITE) << endl;
+  return nextMove;
 }
 
-int MinMaxPlayer::getMoveScore(Board *board, Move *move, int exit, int alpha, int beta) {
+int HybridPlayer::playout(Board *board, PieceColor colorToMove, int counter) {
+  std::vector<ChessPiece *> pieces = board->getPiecesByColor(colorToMove);
+
+  ChessPiece *randomPiece = pieces[rand()%pieces.size()];
+  std::vector<Move *> moves = randomPiece->getAvailableMoves(true);
+  if (!moves.empty() && counter < 1000) { // if the chesspiece has available moves
+    Move *moveToTry = moves.at(rand()%moves.size());
+    moveToTry->setSimulated(true);
+    board->doMove(moveToTry);
+    playout(board, inverse(colorToMove), counter + 1);
+    board->undoMove();
+  } else {
+
+    // return a value of how favorable the score is for the initial player
+    return getBoardScore(board, color);
+  }
+}
+
+int HybridPlayer::getMoveScore(Board *board, Move *move, int exit, int alpha, int beta) {
   PieceColor colorToMove = move->getInitialPiece()->getColor();
 
   if (exit >= depth) {
@@ -80,7 +117,7 @@ int MinMaxPlayer::getMoveScore(Board *board, Move *move, int exit, int alpha, in
   return bestScore;
 }
 
-int MinMaxPlayer::getBoardScore(Board *board, PieceColor c) {
+int HybridPlayer::getBoardScore(Board *board, PieceColor c) {
   vector<ChessPiece *> friendlyPieces = board->getPiecesByColor(c);
   vector<ChessPiece *> opponentPieces = board->getPiecesByColor(inverse(c));
 
@@ -88,7 +125,7 @@ int MinMaxPlayer::getBoardScore(Board *board, PieceColor c) {
   return score;
 }
 
-int MinMaxPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
+int HybridPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
   int materialScore = 0;
   int locationScore = 0;
   int movementScore = 0;
@@ -112,7 +149,7 @@ int MinMaxPlayer::evaluateScore(Board *board, vector<ChessPiece *> pieces) {
   return total;
 }
 
-int MinMaxPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i location) {
+int HybridPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i location) {
   // source: https://chessprogramming.wikispaces.com/Simplified+evaluation+function
 
   PieceType type = piece->getType();
@@ -204,7 +241,7 @@ int MinMaxPlayer::getLocationScore(Board *board, ChessPiece *piece, Vector2i loc
 
   return locationScores[y][x];
 }
-int MinMaxPlayer::getPieceScore(ChessPiece *piece) {
+int HybridPlayer::getPieceScore(ChessPiece *piece) {
   switch (piece->getType()) {
     case KING: return 10000;
     case QUEEN: return 900;
